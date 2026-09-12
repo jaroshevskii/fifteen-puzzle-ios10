@@ -67,7 +67,6 @@ static UIColor *PuzzleOrange(void) { return PuzzleRGB(255, 161, 0); }      // ra
         [self layoutCellsAnimated:NO];
     }
 
-    UIFont *font = [UIFont fontWithName:@"Menlo-Bold" size:11.0] ?: [UIFont boldSystemFontOfSize:11.0];
     for (int i = 0; i < (int)_cells.count; ++i) {
         UIView *cell = _cells[i];
         for (UIView *sub in cell.subviews) {
@@ -87,8 +86,7 @@ static UIColor *PuzzleOrange(void) { return PuzzleRGB(255, 161, 0); }      // ra
                     forState:UIControlStateNormal];
             [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
             const CGFloat size = round(body.size.height * 0.5);
-            button.titleLabel.font = [UIFont fontWithName:@"Menlo-Bold" size:size]
-                                         ?: [UIFont boldSystemFontOfSize:size];
+            button.titleLabel.font = [UIFont systemFontOfSize:size weight:UIFontWeightBold];
             button.titleLabel.adjustsFontSizeToFitWidth = YES;
             button.titleLabel.minimumScaleFactor = 0.5;
             [button addTarget:self action:@selector(tileTapped:)
@@ -96,7 +94,6 @@ static UIColor *PuzzleOrange(void) { return PuzzleRGB(255, 161, 0); }      // ra
             [cell addSubview:button];
         }
     }
-    (void)font;
 
     [self layoutCellsAnimated:animate];
 }
