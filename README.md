@@ -13,6 +13,18 @@ Board screen with basic play:
 
 Not yet ported (roadmap): settings/saved-game persistence, local SQLite + leaderboard, network API client, auto-solver, multi-player, sound, and the exact raylib bitmap font.
 
+## Demo
+
+Running on iPad 4 (iOS 10.3.4):
+
+<video src="https://github.com/jaroshevskii/fifteen-puzzle-ios10/releases/download/v0.1.0/demo.mp4" width="75%" controls></video>
+
+[Direct download: demo.mp4](https://github.com/jaroshevskii/fifteen-puzzle-ios10/releases/download/v0.1.0/demo.mp4)
+
+## Screenshot
+
+![Fifteen Puzzle on iPad 4](https://github.com/jaroshevskii/fifteen-puzzle-ios10/releases/download/v0.1.0/screenshot.png)
+
 ## Build (Theos)
 
 ```sh
