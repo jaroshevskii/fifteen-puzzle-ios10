@@ -10,33 +10,38 @@ static NSString *SettingsPath(void) {
 
 @implementation AppSettings
 
-+ (instancetype)load {
-    AppSettings *settings = [[AppSettings alloc] init];
-    settings.isSoundEnabled = NO;
-    settings.lastBoardSize = 4;
-    settings.playerName = @"Player";
-    settings.autoResume = NO;
++ (instancetype)sharedSettings {
+    static AppSettings *shared;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        shared = [[AppSettings alloc] init];
+        shared.isSoundEnabled = NO;
+        shared.lastBoardSize = 4;
+        shared.playerName = @"Player";
+        shared.autoResume = NO;
+        [shared reloadFromDisk];
+    });
+    return shared;
+}
 
+- (void)reloadFromDisk {
     NSData *data = [NSData dataWithContentsOfFile:SettingsPath()];
-    if (data) {
-        NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL];
-        if ([dict isKindOfClass:[NSDictionary class]]) {
-            if ([dict[@"isSoundEnabled"] respondsToSelector:@selector(boolValue)]) {
-                settings.isSoundEnabled = [dict[@"isSoundEnabled"] boolValue];
-            }
-            if ([dict[@"lastBoardSize"] respondsToSelector:@selector(integerValue)]) {
-                NSInteger size = [dict[@"lastBoardSize"] integerValue];
-                if (size >= 4 && size <= 13) settings.lastBoardSize = size;
-            }
-            if ([dict[@"playerName"] isKindOfClass:[NSString class]]) {
-                settings.playerName = dict[@"playerName"];
-            }
-            if ([dict[@"autoResume"] respondsToSelector:@selector(boolValue)]) {
-                settings.autoResume = [dict[@"autoResume"] boolValue];
-            }
-        }
+    if (!data) return;
+    NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL];
+    if (![dict isKindOfClass:[NSDictionary class]]) return;
+    if ([dict[@"isSoundEnabled"] respondsToSelector:@selector(boolValue)]) {
+        self.isSoundEnabled = [dict[@"isSoundEnabled"] boolValue];
     }
-    return settings;
+    if ([dict[@"lastBoardSize"] respondsToSelector:@selector(integerValue)]) {
+        NSInteger size = [dict[@"lastBoardSize"] integerValue];
+        if (size >= 4 && size <= 13) self.lastBoardSize = size;
+    }
+    if ([dict[@"playerName"] isKindOfClass:[NSString class]]) {
+        self.playerName = dict[@"playerName"];
+    }
+    if ([dict[@"autoResume"] respondsToSelector:@selector(boolValue)]) {
+        self.autoResume = [dict[@"autoResume"] boolValue];
+    }
 }
 
 - (void)save {

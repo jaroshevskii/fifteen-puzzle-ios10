@@ -10,31 +10,30 @@ static NSString *SavedGamePath(void) {
 
 @implementation SavedGame
 
-+ (instancetype)load {
+- (BOOL)loadFromDisk {
     NSData *data = [NSData dataWithContentsOfFile:SavedGamePath()];
-    if (!data) return nil;
+    if (!data) return NO;
     NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL];
-    if (![dict isKindOfClass:[NSDictionary class]]) return nil;
+    if (![dict isKindOfClass:[NSDictionary class]]) return NO;
 
     NSArray *rawTiles = dict[@"tiles"];
     NSArray *rawHistory = dict[@"moveHistory"];
     if (![rawTiles isKindOfClass:[NSArray class]] || ![rawHistory isKindOfClass:[NSArray class]]) {
-        return nil;
+        return NO;
     }
     NSNumber *gridNum = dict[@"grid"];
     NSNumber *secondsNum = dict[@"secondsElapsed"];
     if (![gridNum respondsToSelector:@selector(integerValue)] ||
         ![secondsNum respondsToSelector:@selector(integerValue)]) {
-        return nil;
+        return NO;
     }
     NSInteger grid = [gridNum integerValue];
     if (grid < 4 || grid > 13 || rawTiles.count != (NSUInteger)(grid * grid)) {
-        return nil;
+        return NO;
     }
 
-    SavedGame *game = [[SavedGame alloc] init];
-    game.grid = grid;
-    game.secondsElapsed = [secondsNum integerValue];
+    self.grid = grid;
+    self.secondsElapsed = [secondsNum integerValue];
     NSMutableArray<NSNumber *> *tiles = [NSMutableArray arrayWithCapacity:rawTiles.count];
     for (id value in rawTiles) {
         NSNumber *number = [value isKindOfClass:[NSNumber class]]
@@ -44,7 +43,7 @@ static NSString *SavedGamePath(void) {
                                       : @0);
         [tiles addObject:number];
     }
-    game.tiles = tiles;
+    self.tiles = tiles;
     NSMutableArray<NSNumber *> *history = [NSMutableArray arrayWithCapacity:rawHistory.count];
     for (id value in rawHistory) {
         NSNumber *number = [value isKindOfClass:[NSNumber class]]
@@ -54,8 +53,8 @@ static NSString *SavedGamePath(void) {
                                       : @0);
         [history addObject:number];
     }
-    game.moveHistory = history;
-    return game;
+    self.moveHistory = history;
+    return YES;
 }
 
 - (BOOL)save {

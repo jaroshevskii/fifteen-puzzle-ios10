@@ -85,7 +85,7 @@ static UIColor *PuzzleOrange(void) { return PuzzleRGB(255, 161, 0); }      // ra
             [button setTitle:[NSString stringWithFormat:@"%d", tiles[i]]
                     forState:UIControlStateNormal];
             [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-            const CGFloat size = round(body.size.height * 0.5);
+            const CGFloat size = MAX(8.0, round(body.size.height * 0.5));
             button.titleLabel.font = [UIFont systemFontOfSize:size weight:UIFontWeightBold];
             button.titleLabel.adjustsFontSizeToFitWidth = YES;
             button.titleLabel.minimumScaleFactor = 0.5;

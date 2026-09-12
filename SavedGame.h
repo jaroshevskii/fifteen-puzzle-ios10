@@ -5,7 +5,7 @@
 @property (nonatomic) NSInteger secondsElapsed;
 @property (nonatomic, copy) NSArray<NSNumber *> *tiles;
 @property (nonatomic, copy) NSArray<NSNumber *> *moveHistory;
-+ (instancetype)load;
+- (BOOL)loadFromDisk;
 - (BOOL)save;
 - (void)clear;
 @end

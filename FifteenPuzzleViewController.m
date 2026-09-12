@@ -7,6 +7,7 @@
 #import "AudioPlayerClient.h"
 #import "SettingsViewController.h"
 #import "ConfettiView.h"
+#import "F15Trace.h"
 
 static UIFont *PuzzleFont(CGFloat size, CGFloat weight) {
     return [UIFont systemFontOfSize:size weight:weight];
@@ -28,6 +29,12 @@ static UIColor *PuzzleOrange(void) {
     UILabel *_victoryTitle;
     UILabel *_victorySubtitle;
     ConfettiView *_confetti;
+    UIView *_continueOverlay;
+    UIView *_continuePanel;
+    UILabel *_continueTitle;
+    UILabel *_continueMessage;
+    UIButton *_continueResumeButton;
+    UIButton *_continueNewButton;
 
     int _tiles[PUZ_MAX_TILES];
     int _history[PUZ_MAX_HISTORY];
@@ -44,6 +51,7 @@ static UIColor *PuzzleOrange(void) {
     AppSettings *_settings;
     SavedGame *_savedGame;
     BOOL _restoredFromSave;
+    BOOL _didPromptForContinue;
     struct {
         NSInteger grid;
         NSInteger historyLen;
@@ -55,9 +63,13 @@ static UIColor *PuzzleOrange(void) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor blackColor];
+    F15Trace(@"viewDidLoad", @"start");
 
-    _settings = [AppSettings load];
+    _settings = [AppSettings sharedSettings];
+    F15Trace(@"viewDidLoad", [NSString stringWithFormat:@"settings ok %p", (void *)_settings]);
+
     [[DatabaseClient sharedClient] migrateAndReturnError:NULL];
+    F15Trace(@"viewDidLoad", @"migrate ok");
 
     __weak typeof(self) weakSelf = self;
     _boardView = [[PuzzleBoardView alloc] initWithFrame:CGRectZero tileTap:^(int index) {
@@ -118,6 +130,40 @@ static UIColor *PuzzleOrange(void) {
 
     [self.view addSubview:_overlay];
 
+    _continueOverlay = [[UIView alloc] initWithFrame:CGRectZero];
+    _continueOverlay.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.85];
+    _continueOverlay.hidden = YES;
+
+    _continuePanel = [[UIView alloc] initWithFrame:CGRectZero];
+    _continuePanel.backgroundColor = [UIColor colorWithRed:112 / 255.0 green:31 / 255.0 blue:126 / 255.0 alpha:1.0];
+    _continuePanel.layer.cornerRadius = 12.0;
+    [_continueOverlay addSubview:_continuePanel];
+
+    _continueTitle = [[UILabel alloc] initWithFrame:CGRectZero];
+    _continueTitle.text = @"Continue game?";
+    _continueTitle.textColor = [UIColor whiteColor];
+    _continueTitle.textAlignment = NSTextAlignmentCenter;
+    _continueTitle.font = PuzzleFont(26.0, UIFontWeightBold);
+    [_continuePanel addSubview:_continueTitle];
+
+    _continueMessage = [[UILabel alloc] initWithFrame:CGRectZero];
+    _continueMessage.text = @"An unfinished game was saved.";
+    _continueMessage.textColor = [UIColor whiteColor];
+    _continueMessage.textAlignment = NSTextAlignmentCenter;
+    _continueMessage.font = PuzzleFont(16.0, UIFontWeightRegular);
+    [_continuePanel addSubview:_continueMessage];
+
+    _continueResumeButton = [self makeActionButton:@"Resume" action:@selector(resumeTapped:)];
+    _continueResumeButton.backgroundColor = PuzzleOrange();
+    [_continuePanel addSubview:_continueResumeButton];
+
+    _continueNewButton = [self makeActionButton:@"New game" action:@selector(newGameTapped:)];
+    _continueNewButton.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
+    [_continueNewButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [_continuePanel addSubview:_continueNewButton];
+
+    [self.view addSubview:_continueOverlay];
+
     puz_rng_seed(&_rng, (uint64_t)CFAbsoluteTimeGetCurrent() * 2654435761u);
 
     _timer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self
@@ -129,6 +175,7 @@ static UIColor *PuzzleOrange(void) {
                                              selector:@selector(appWillBackground:)
                                                  name:UIApplicationDidEnterBackgroundNotification
                                                object:nil];
+    F15Trace(@"viewDidLoad", @"end");
 }
 
 - (void)dealloc {
@@ -138,9 +185,8 @@ static UIColor *PuzzleOrange(void) {
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    if (_restoredFromSave && !_isGameOver) {
-        [self presentContinuePrompt];
-    }
+    // No UIAlertController here: the continue decision is an in-view overlay,
+    // which cannot hit presentation races.
 }
 
 - (void)appWillBackground:(NSNotification *)notification {
@@ -150,21 +196,53 @@ static UIColor *PuzzleOrange(void) {
 #pragma mark - Game lifecycle
 
 - (void)beginInitialGame {
-    _savedGame = [SavedGame load];
+    NSLog(@"[F15] beginInitialGame");
+    SavedGame *loaded = [[SavedGame alloc] init];
+    const BOOL hasSave = [loaded loadFromDisk];
+    F15Trace(@"beginInitialGame", [NSString stringWithFormat:@"hasSave=%d grid=%ld saved=%p",
+                                                           (int)hasSave, (long)loaded.grid, (void *)loaded]);
+    if (hasSave) {
+        _savedGame = loaded;
+    } else {
+        _savedGame = nil;
+    }
     if (_savedGame && [self savedIsValid] && ![self savedIsSolved]) {
         _restoredFromSave = YES;
+        NSLog(@"[F15] restoring saved game grid=%ld history=%lu",
+              (long)_savedGame.grid, (unsigned long)_savedGame.moveHistory.count);
         [self restoreGame:_savedGame];
         if (_settings.autoResume) {
             _savedGame = nil;
+            _restoredFromSave = NO; // straight into the restored game, no prompt
+            NSLog(@"[F15] autoResume: jumping into restored game");
+        } else {
+            [self showContinueOverlay];
         }
     } else {
+        if (_savedGame) {
+            NSLog(@"[F15] invalid saved game, clearing");
+            [_savedGame clear];
+        }
         _savedGame = nil;
         [self startNewGame:_settings.lastBoardSize];
     }
+    F15Trace(@"beginInitialGame", @"end");
 }
 
 - (BOOL)savedIsValid {
-    return _savedGame && _savedGame.tiles.count == (NSUInteger)(_savedGame.grid * _savedGame.grid);
+    if (!_savedGame) return NO;
+    if (_savedGame.tiles.count != (NSUInteger)(_savedGame.grid * _savedGame.grid)) return NO;
+    if (_savedGame.grid < 4 || _savedGame.grid > 13) return NO;
+
+    BOOL seen[PUZ_MAX_TILES] = {NO};
+    for (NSUInteger i = 0; i < _savedGame.tiles.count; ++i) {
+        const int value = _savedGame.tiles[i].intValue;
+        if (value < 0 || value >= _savedGame.grid * _savedGame.grid || seen[value]) {
+            return NO; // corrupt save: not a permutation of 0..N-1
+        }
+        seen[value] = YES;
+    }
+    return YES;
 }
 
 - (BOOL)savedIsSolved {
@@ -192,29 +270,35 @@ static UIColor *PuzzleOrange(void) {
     _startTime = CFAbsoluteTimeGetCurrent() - (CFAbsoluteTime)_secondsElapsed;
     _isGameOver = NO;
     _hasSavedSignature = NO;
+    F15Trace(@"restoreGame", [NSString stringWithFormat:@"grid=%d tiles=%lu hist=%d",
+                                                       (int)game.grid,
+                                                       (unsigned long)game.tiles.count,
+                                                       _historyLen]);
     [self layoutUI];
     [_boardView setTiles:_tiles grid:_grid animate:NO];
     [self updateStatus];
 }
 
-- (void)presentContinuePrompt {
-    UIAlertController *alert = [UIAlertController
-        alertControllerWithTitle:@"Continue game?"
-                         message:@"An unfinished game was saved."
-                  preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Resume"
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction *action) {
-                                                _savedGame = nil;
-                                            }]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"New game"
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(UIAlertAction *action) {
-                                                _restoredFromSave = NO;
-                                                _savedGame = nil;
-                                                [self startNewGame:_settings.lastBoardSize];
-                                            }]];
-    [self presentViewController:alert animated:YES completion:nil];
+- (void)showContinueOverlay {
+    NSLog(@"[F15] showing continue overlay");
+    _didPromptForContinue = YES;
+    _continueOverlay.hidden = NO;
+    [self.view bringSubviewToFront:_continueOverlay];
+}
+
+- (void)resumeTapped:(UIButton *)sender {
+    NSLog(@"[F15] continue: Resume");
+    _restoredFromSave = NO;
+    _savedGame = nil;
+    _continueOverlay.hidden = YES;
+}
+
+- (void)newGameTapped:(UIButton *)sender {
+    NSLog(@"[F15] continue: New game");
+    _restoredFromSave = NO;
+    _savedGame = nil;
+    _continueOverlay.hidden = YES;
+    [self startNewGame:_settings.lastBoardSize];
 }
 
 - (void)startNewGame:(int)grid {
@@ -224,6 +308,7 @@ static UIColor *PuzzleOrange(void) {
     _secondsElapsed = 0;
     _isGameOver = NO;
     _hasSavedSignature = NO;
+    F15Trace(@"startNewGame", [NSString stringWithFormat:@"grid=%d", grid]);
     [self setOverlayHidden:YES];
     [_boardView setTiles:_tiles grid:_grid animate:NO];
     [self layoutUI];
@@ -360,10 +445,16 @@ static UIColor *PuzzleOrange(void) {
 
 - (void)timerTick:(NSTimer *)timer {
     if (!_started || _isGameOver) return;
+    static BOOL s_firstTick;
+    if (!s_firstTick) {
+        s_firstTick = YES;
+        F15Trace(@"timer", [NSString stringWithFormat:@"first tick settings=%p saved=%p",
+                                                      (void *)_settings, (void *)_savedGame]);
+    }
     const NSInteger seconds = (NSInteger)(CFAbsoluteTimeGetCurrent() - _startTime);
     if (seconds != _secondsElapsed) {
         _secondsElapsed = seconds;
-        if (_settings.isSoundEnabled) {
+        if (_settings && _settings.isSoundEnabled) {
             [[AudioPlayerClient sharedClient] playTick];
         }
         [self updateStatus];
@@ -383,9 +474,15 @@ static UIColor *PuzzleOrange(void) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    static int s_layoutCalls;
+    s_layoutCalls++;
+    if (s_layoutCalls <= 3 || (s_layoutCalls % 500) == 0) {
+        F15Trace(@"viewDidLayoutSubviews", [NSString stringWithFormat:@"call=%d", s_layoutCalls]);
+    }
     [self layoutUI];
     if (!_started) {
         _started = YES;
+        F15Trace(@"viewDidLayoutSubviews", @"beginInitialGame");
         [self beginInitialGame];
     }
 }
@@ -427,8 +524,25 @@ static UIColor *PuzzleOrange(void) {
     _victorySubtitle.frame = CGRectMake(0, sh / 2.0 + 12.0, sw, 30.0);
     _confetti.frame = bounds;
 
+    _continueOverlay.frame = bounds;
+    const CGFloat panelW = MIN(sw - 64.0, 360.0);
+    const CGFloat panelH = 220.0;
+    _continuePanel.frame = CGRectMake((sw - panelW) / 2.0, (sh - panelH) / 2.0,
+                                      panelW, panelH);
+    _continueTitle.frame = CGRectMake(16, 28, panelW - 32, 34);
+    _continueMessage.frame = CGRectMake(16, 70, panelW - 32, 24);
+    const CGFloat buttonGap = 12.0;
+    const CGFloat buttonW = (panelW - 32.0 - buttonGap) / 2.0;
+    _continueResumeButton.frame = CGRectMake(16, 124, buttonW, 48);
+    _continueNewButton.frame = CGRectMake(16 + buttonW + buttonGap, 124, buttonW, 48);
+
     if (_started && _grid > 0) {
         [_boardView setTiles:_tiles grid:_grid animate:NO];
+    }
+    static int s_layoutCount;
+    s_layoutCount++;
+    if (s_layoutCount <= 3 || (s_layoutCount % 500) == 0) {
+        F15Trace(@"layoutUI", [NSString stringWithFormat:@"count=%d grid=%d", s_layoutCount, _grid]);
     }
 }
 

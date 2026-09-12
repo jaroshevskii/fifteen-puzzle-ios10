@@ -5,6 +5,6 @@
 @property (nonatomic) NSInteger lastBoardSize;
 @property (nonatomic, copy) NSString *playerName;
 @property (nonatomic) BOOL autoResume;
-+ (instancetype)load;
++ (instancetype)sharedSettings;
 - (void)save;
 @end
