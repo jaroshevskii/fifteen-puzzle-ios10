@@ -6,7 +6,9 @@ iOS 10 port of the [fifteen-puzzle](https://github.com/jaroshevskii/fifteen-puzz
 
 ## Demo
 
-<video src="assets/demo.mp4" width="75%" controls></video>
+![Demo of Fifteen Puzzle on iPad 4](assets/demo.gif)
+
+Full video: [demo.mp4](assets/demo.mp4)
 
 ## Features
 
