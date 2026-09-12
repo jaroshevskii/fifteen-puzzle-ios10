@@ -1,0 +1,19 @@
+README.md
+  s_47165685b1424a::t_006e5d54b9d3f4 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1c41b03e2885bc5e5a9527137d7b11d50b6dacae",
+  "prompts": {},
+  "sessions": {
+    "s_47165685b1424a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f6d7bd226ffe41YnXXdS0qRnzd",
+        "model": "big-pickle"
+      },
+      "human_author": "Sasha Jaroshevskii 🦄 <72662383+jaroshevskii@users.noreply.github.com>"
+    }
+  }
+}
