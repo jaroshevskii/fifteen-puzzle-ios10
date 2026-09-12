@@ -45,7 +45,6 @@ int puz_slide(int *tiles, int *history, int *historyLen, int grid, int pos) {
     const int empty = puz_empty_index(tiles, grid);
     const int count = grid * grid;
     if (empty < 0 || pos < 0 || pos >= count || !puz_is_adjacent(pos, empty, grid)) return 0;
-    if (*historyLen >= PUZ_MAX_HISTORY) return 0;
     const int tmp = tiles[pos];
     tiles[pos] = tiles[empty];
     tiles[empty] = tmp;
