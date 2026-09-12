@@ -2,11 +2,11 @@
 
 iOS 10 port of the [fifteen-puzzle](https://github.com/jaroshevskii/fifteen-puzzle) desktop game for the 32-bit iPad 4. Same `PuzzleCore` rules and raylib color scheme, UIKit UI instead of raylib. Built with [Theos](https://theos.dev).
 
-![Fifteen Puzzle on iPad 4](https://github.com/jaroshevskii/fifteen-puzzle-ios10/releases/download/v0.1.0/screenshot.png)
+![Fifteen Puzzle on iPad 4](assets/screenshot.png)
 
 ## Demo
 
-<video src="https://github.com/jaroshevskii/fifteen-puzzle-ios10/releases/download/v0.1.0/demo.mp4" width="75%" controls></video>
+<video src="assets/demo.mp4" width="75%" controls></video>
 
 ## Features
 
