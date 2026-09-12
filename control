@@ -1,0 +1,8 @@
+Package: com.example.fifteenpuzzle
+Name: 15 Puzzle
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Sliding puzzle for iOS 10, ported from the desktop raylib fifteen-puzzle (PuzzleCore)
+Maintainer: jaroshevskii
+Author: jaroshevskii
+Section: Games
